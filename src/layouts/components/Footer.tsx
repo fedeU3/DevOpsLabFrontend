@@ -1,4 +1,4 @@
-import { Box, Grid, Typography, IconButton } from '@mui/material';
+import { Box, Grid, Typography } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';

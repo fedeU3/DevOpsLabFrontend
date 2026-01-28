@@ -5,7 +5,6 @@ import Footer from '../components/Footer';
 import { Box } from '@mui/material';
 import { menuList } from '../constants/menuList';
 import { useNavigate, useLocation } from 'react-router';
-import { useAuthContext } from '../../lib/hooks/contextHooks/useAuthContext';
 
 type AppLayoutProps = {
   children: React.ReactNode;
@@ -17,7 +16,6 @@ type AppLayoutProps = {
 const AppLayout: React.FC<AppLayoutProps> = ({ children, currentPage, isAdmin, isActive }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuthContext(); // Obtener la información del usuario
 
   const goTo = (url: string) => () => {
     navigate(url);
