@@ -62,6 +62,7 @@ const Usuario = () => {
         setUser(data);
         setFormData(data);
       } catch (err) {
+        console.error(err);
         setError("Error al cargar la información del usuario");
       }
     };
