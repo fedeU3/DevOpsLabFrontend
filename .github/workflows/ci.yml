@@ -58,4 +58,26 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_ORG: ${{ secrets.SONAR_ORG }}
           SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
-          
+
+  final:
+    name: ✅ Final check (Lint + Sonar)
+    runs-on: ubuntu-latest
+    needs: [lint, sonar]
+    if: ${{ always() }}
+    steps:
+      - name: Fail if any required job failed
+        run: |
+          echo "Lint result: ${{ needs.lint.result }}"
+          echo "Sonar result: ${{ needs.sonar.result }}"
+
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "Lint failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.sonar.result }}" != "success" ]; then
+            echo "SonarCloud failed"
+            exit 1
+          fi
+
+          echo "All checks passed ✅"
