@@ -19,45 +19,46 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Install deps
-        run: npm ci
-
-      - name: ESLint (fails on errors)
-        run: npm run lint
+      - run: npm ci
+      - run: npm run lint
 
   sonar:
     name: SonarCloud
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Install deps
-        run: npm ci
+      - run: npm ci
+
+      - name: Debug secrets presence
+        run: |
+          test -n "${{ secrets.SONAR_TOKEN }}" || (echo "Missing SONAR_TOKEN" && exit 1)
+          test -n "${{ secrets.SONAR_ORG }}" || (echo "Missing SONAR_ORG" && exit 1)
+          test -n "${{ secrets.SONAR_PROJECT_KEY }}" || (echo "Missing SONAR_PROJECT_KEY" && exit 1)
+          echo "OK: secrets exist"
 
       - name: SonarCloud Scan (Quality Gate enforced)
         uses: SonarSource/sonarcloud-github-action@v2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_ORG: ${{ secrets.SONAR_ORG }}
-          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        with:
+          args: >
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
 
   final:
     name: ✅ Final check (Lint + Sonar)
