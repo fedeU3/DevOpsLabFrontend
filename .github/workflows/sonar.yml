@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # recomendado para PR decoration y mejor análisis
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -33,11 +33,23 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      - name: Debug Sonar secrets (safe)
+        run: |
+          echo "SONAR_ORG length: ${#SONAR_ORG}"
+          echo "SONAR_PROJECT_KEY length: ${#SONAR_PROJECT_KEY}"
+          case "$SONAR_ORG" in
+            *" "*) echo "ERROR: SONAR_ORG contains spaces"; exit 1;;
+          esac
+          case "$SONAR_PROJECT_KEY" in
+            *" "*) echo "ERROR: SONAR_PROJECT_KEY contains spaces"; exit 1;;
+          esac
+        env:
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+
       - name: SonarCloud Scan (Quality Gate enforced)
         uses: SonarSource/sonarcloud-github-action@v2
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.organization=${{ secrets.SONAR_ORG }}
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
