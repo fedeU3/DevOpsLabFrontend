@@ -9,9 +9,9 @@ import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router';
 import { ROUTES } from '../../lib/constants/routes';
 
-type Props = {};
 
-const MyOrders = (props: Props) => {
+
+const MyOrders = () => {
   const navigate = useNavigate();
   const { myOrders, isLoading, error } = useMyOrders();
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');

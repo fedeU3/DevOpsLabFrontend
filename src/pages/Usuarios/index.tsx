@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from "react";
 import {
-  Button,
   Container,
   Grid,
   Card,
-  CardContent,
   CardMedia,
   Typography,
-  IconButton,
   Box,
   TextField,
 } from "@mui/material";
@@ -50,21 +47,13 @@ const fetchCurrentUser = async (): Promise<IUser> => {
   });
 };
 
-const updateUser = async (user: IUser): Promise<void> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.log("Usuario actualizado", user);
-      resolve();
-    }, 500);
-  });
-};
+
 
 const Usuario = () => {
   const [user, setUser] = useState<IUser | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [editing] = useState(false);
   const [formData, setFormData] = useState<IUser | null>(null);
-  const [showForm, setShowForm] = useState(false); 
 
   useEffect(() => {
     const loadUser = async () => {

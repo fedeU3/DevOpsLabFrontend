@@ -1,8 +1,7 @@
 import {
   Button, Container, Grid, Card, CardContent, CardMedia,
-  Typography, IconButton, Box
+  Typography, Box
 } from "@mui/material";
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import { useMembers } from '../../lib/hooks/useMembers';
 import { useEquipos } from '../../lib/hooks/useEquipos';
