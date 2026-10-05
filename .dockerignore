@@ -1,0 +1,12 @@
+node_modules
+dist
+
+# La URL del backend se pasa con --build-arg; asi la imagen no depende de un .env local
+.env
+.env.*
+
+.git
+cypress/videos
+cypress/screenshots
+*.log
+.DS_Store

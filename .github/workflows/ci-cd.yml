@@ -1,0 +1,228 @@
+# Nombre que muestra GitHub en la pestania Actions.
+name: CI/CD
+
+# Cuando corre el workflow.
+on:
+  push:
+    # Cualquier push a cualquier rama corre lint + sonar (CI).
+    # El build y el deploy (CD) solo corren en preprod y prod: ver el "if" de cada job.
+    branches: ["**"]
+  pull_request:
+    # Los PR que apuntan a estas ramas tambien pasan por lint + sonar antes del merge.
+    branches: [dev, preprod, prod]
+
+# Permisos por defecto del token automatico (GITHUB_TOKEN) en todos los jobs:
+# solo lectura. Los jobs que necesitan mas los piden en su propio "permissions".
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  # Un solo run a la vez por rama.
+  group: ci-${{ github.ref }}
+  # En ramas comunes, un push nuevo cancela el run anterior (no sirve terminar uno viejo).
+  # En preprod y prod NO se cancela: cortar un deploy a la mitad puede dejar el VPS a medias.
+  cancel-in-progress: ${{ github.ref_name != 'preprod' && github.ref_name != 'prod' }}
+
+jobs:
+
+  # =====================================================================
+  # CI: lo que ya tenia ci.yml
+  # =====================================================================
+
+  lint:
+    name: Lint
+    # Maquina virtual Linux que presta GitHub para correr este job.
+    runs-on: ubuntu-latest
+    steps:
+      # Baja el codigo del repo en la maquina virtual.
+      - uses: actions/checkout@v4
+
+      # Instala Node y cachea la carpeta de npm.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Instala exactamente lo que dice package-lock.json.
+      - run: npm ci
+      # Si eslint encuentra errores, el job falla y no hay deploy.
+      - run: npm run lint
+
+  sonar:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historial completo: Sonar lo usa para saber que codigo es nuevo.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Corta con un mensaje claro si faltan los secretos de Sonar.
+      # Mientras no esten cargados, este job falla y bloquea el deploy.
+      - name: Debug secrets presence
+        run: |
+          test -n "${{ secrets.SONAR_TOKEN }}" || (echo "Missing SONAR_TOKEN" && exit 1)
+          test -n "${{ secrets.SONAR_ORG }}" || (echo "Missing SONAR_ORG" && exit 1)
+          test -n "${{ secrets.SONAR_PROJECT_KEY }}" || (echo "Missing SONAR_PROJECT_KEY" && exit 1)
+          echo "OK: secrets exist"
+
+      # Analiza el codigo; si no pasa el Quality Gate, el job falla.
+      - name: SonarCloud Scan (Quality Gate enforced)
+        uses: SonarSource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+
+  # Resumen de lint + sonar en un solo check: sirve para marcarlo como obligatorio
+  # en la proteccion de ramas de GitHub.
+  final:
+    name: ✅ Final check (Lint + Sonar)
+    runs-on: ubuntu-latest
+    needs: [lint, sonar]
+    # always(): corre aunque lint o sonar hayan fallado, para informar cual fue.
+    if: ${{ always() }}
+    steps:
+      - name: Fail if any required job failed
+        run: |
+          echo "Lint result: ${{ needs.lint.result }}"
+          echo "Sonar result: ${{ needs.sonar.result }}"
+
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            echo "Lint failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.sonar.result }}" != "success" ]; then
+            echo "SonarCloud failed"
+            exit 1
+          fi
+
+          echo "All checks passed ✅"
+
+  # =====================================================================
+  # CD: construir la imagen y subirla a GHCR
+  # =====================================================================
+
+  build:
+    name: Build y push a GHCR
+    runs-on: ubuntu-latest
+    # Solo despues de que lint y sonar pasaron.
+    needs: [lint, sonar]
+    # Solo en un push (no en PR) a preprod o prod.
+    if: github.event_name == 'push' && (github.ref_name == 'preprod' || github.ref_name == 'prod')
+    permissions:
+      contents: read
+      # Permiso para subir imagenes al GitHub Container Registry con GITHUB_TOKEN.
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # GHCR exige el nombre en minusculas; el usuario de GitHub puede tener mayusculas.
+      # ${VAR,,} es la forma de bash de pasar a minusculas. Lo guarda en IMAGE para los
+      # pasos siguientes. Queda: ghcr.io/<usuario>/clerkiva-frontend
+      - name: Nombre de la imagen
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/clerkiva-frontend" >> "$GITHUB_ENV"
+
+      # Inicia sesion en GHCR con el token automatico del workflow (no hace falta crear uno).
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Buildx: el motor de build de Docker. Hace falta para la cache de abajo.
+      - uses: docker/setup-buildx-action@v3
+
+      # El equivalente a "docker build" + "docker push".
+      # No se pasa VITE_SERVICE_URL: el Dockerfile usa /api por defecto, asi que la misma
+      # imagen sirve para staging y produccion.
+      - uses: docker/build-push-action@v6
+        with:
+          # Contexto = raiz del repo (lo que ven los COPY); usa el Dockerfile de la raiz.
+          context: .
+          push: true
+          # Dos etiquetas para la misma imagen:
+          #  - la rama (preprod / prod): es la que descarga el VPS
+          #  - el SHA del commit: queda guardada para siempre, sirve para volver atras
+          tags: |
+            ${{ env.IMAGE }}:${{ github.ref_name }}
+            ${{ env.IMAGE }}:${{ github.sha }}
+          # Vincula la imagen con este repo en GitHub (la imagen hereda sus permisos).
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          # Cache de capas entre runs: si package.json no cambio, npm ci no se repite.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # =====================================================================
+  # CD: actualizar el VPS
+  # =====================================================================
+
+  deploy:
+    name: Deploy al VPS
+    runs-on: ubuntu-latest
+    needs: [build]
+    # GitHub Environment del que salen los secretos: preprod usa "staging", prod usa
+    # "production". Asi cada rama solo puede leer los secretos de su ambiente.
+    environment: ${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+    permissions:
+      contents: read
+      # Para que el VPS pueda descargar la imagen de GHCR con el token de este run.
+      packages: read
+    env:
+      # Carpeta del ambiente en el VPS: /opt/clerkiva/staging o /opt/clerkiva/production.
+      # El compose.yml y el .env de esa carpeta los deja el deploy del repo backend:
+      # el backend se tiene que desplegar al menos una vez antes que el frontend.
+      DEPLOY_DIR: /opt/clerkiva/${{ github.ref_name == 'prod' && 'production' || 'staging' }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+    steps:
+      # Prepara SSH en la maquina de GitHub: la clave privada para entrar al VPS y la
+      # huella del VPS (known_hosts), para no conectarse a un servidor que se haga pasar
+      # por el nuestro.
+      - name: Configurar SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # Entra al VPS y actualiza solo el frontend. El script viaja por la entrada estandar
+      # (heredoc), asi el token no aparece en la lista de procesos del VPS.
+      # EOF va sin comillas a proposito: $DEPLOY_DIR, $GHCR_TOKEN y $GITHUB_ACTOR se
+      # reemplazan aca, en la maquina de GitHub, porque en el VPS no existen.
+      - name: Actualizar el frontend
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ssh "$VPS_USER@$VPS_HOST" bash -s <<EOF
+          # Corta ante el primer error.
+          set -euo pipefail
+          cd "$DEPLOY_DIR"
+          # Login a GHCR con el token de este run (vence solo al terminar el workflow).
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          # Pase lo que pase, al salir se borra la sesion de GHCR del VPS.
+          trap 'docker logout ghcr.io' EXIT
+          # Descarga la imagen nueva del frontend.
+          docker compose pull frontend
+          # Recrea solo el contenedor del frontend (--no-deps: no toca el backend).
+          # Si la imagen no cambio, no hace nada.
+          docker compose up -d --no-deps frontend
+          # Borra imagenes viejas que ya no usa ningun contenedor.
+          docker image prune -f
+          # Deja en el log del workflow el estado de los contenedores.
+          docker compose ps
+          EOF
