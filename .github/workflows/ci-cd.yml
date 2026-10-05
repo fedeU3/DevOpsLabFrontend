@@ -76,7 +76,7 @@ jobs:
 
       # Analiza el codigo; si no pasa el Quality Gate, el job falla.
       - name: SonarCloud Scan (Quality Gate enforced)
-        uses: SonarSource/sonarcloud-github-action@v2
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
