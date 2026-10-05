@@ -1,6 +1,6 @@
-import React, { createContext, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Notification, { NotificationProps } from "../../components/Notification";
-import { initialContextValue } from "./constants/initialValues";
+import { ViewContext } from "./context";
 import AppLayout from "../../layouts/app/AppLayout";
 import BaseLayout from "../../layouts/base/BaseLayout";
 import { useLocation } from "react-router";
@@ -34,8 +34,6 @@ export type ViewContextType = {
     hide: () => void;
   };
 }
-
-export const ViewContext = createContext<ViewContextType>(initialContextValue);
 
 type ViewProviderProps = {
   children: React.ReactNode;

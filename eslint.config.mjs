@@ -3,9 +3,12 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 import reactHooks from 'eslint-plugin-react-hooks';
-import { reactRefresh } from 'eslint-plugin-react-refresh';
+import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default tseslint.config(
+  // Ignores globales: tienen que ir en un objeto que solo tenga "ignores"
+  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
+
   // Base JS
   eslint.configs.recommended,
 
@@ -23,7 +26,7 @@ export default tseslint.config(
   },
 
   // React Refresh (preset para Vite)
-  reactRefresh.configs.vite(),
+  reactRefresh.configs.vite,
 
   // Prettier: apaga reglas que chocan con formateo
   prettier,
@@ -34,12 +37,6 @@ export default tseslint.config(
       globals: {
         ...globals.browser,
         ...globals.es2021,
-      },
-      parserOptions: {
-        // Opción moderna (recomendada por typescript-eslint) para proyectos con TS “real”
-        // Si te diera problemas, abajo te dejo el fallback con `project`.
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
@@ -56,6 +53,17 @@ export default tseslint.config(
         },
       ],
     },
-    ignores: ['dist/', 'node_modules/', 'coverage/', '.eslintrc.*', 'eslint.config.mjs'],
+  },
+
+  // Tests e2e de Cypress: globals de mocha (describe, it...) y de Cypress (cy)
+  {
+    files: ['cypress/**/*.{js,ts}'],
+    languageOptions: {
+      globals: {
+        ...globals.mocha,
+        cy: 'readonly',
+        Cypress: 'readonly',
+      },
+    },
   },
 );

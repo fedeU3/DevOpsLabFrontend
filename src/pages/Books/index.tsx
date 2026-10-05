@@ -1,9 +1,6 @@
-import React from 'react'
 import { useBooks } from '../../lib/hooks/useBooks'
 
-type Props = {}
-
-const Books  = (props: Props) => {
+const Books = () => {
   const {
     books,
     isLoading,

@@ -3,7 +3,7 @@ import { AxiosError } from 'axios';
 import { useAuth } from '../../lib/hooks/useAuth';
 import { useNavigate } from 'react-router';
 import { LoginDTO } from '../../lib/dto/LoginDTO';
-import { initialContextValue } from './constants/initialValues';
+import { AuthContext } from './context';
 import { IGetAuthResponse } from '../../lib/responses/getAuth';
 import { SignUpFormType } from '../../lib/types/forms/SignUpForm';
 import { LogInFormType } from '../../lib/types/forms/LoginForm';
@@ -18,8 +18,6 @@ export interface AuthContextType {
   loginError: AxiosError<{ message?: string }> | null;
 }
 
-
-export const AuthContext = React.createContext<AuthContextType>(initialContextValue);
 
 type AuthProviderProps = {
   children: React.ReactNode;

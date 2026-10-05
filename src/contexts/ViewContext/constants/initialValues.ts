@@ -1,12 +1,16 @@
 import { ViewContextType } from "..";
 
+const notImplemented = () => {
+  throw new Error("ViewContext: function is not implemented.");
+};
+
 export const initialContextValue: ViewContextType = {
   notification: {
-    open: false,
-    message: "",
-    severity: "info",
+    show: notImplemented,
+    hide: notImplemented,
   },
-  setNotification: () => {
-    throw new Error("ViewContext: setNotification function is not implemented.");
+  modal: {
+    show: notImplemented,
+    hide: notImplemented,
   },
 };
