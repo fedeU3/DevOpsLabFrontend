@@ -33,7 +33,7 @@ jobs:
   lint:
     name: Lint
     # Maquina virtual Linux que presta GitHub para correr este job.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # Baja el codigo del repo en la maquina virtual.
       - uses: actions/checkout@v5
@@ -51,7 +51,7 @@ jobs:
 
   sonar:
     name: SonarCloud
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
@@ -76,7 +76,7 @@ jobs:
 
       # Analiza el codigo; si no pasa el Quality Gate, el job falla.
       - name: SonarCloud Scan (Quality Gate enforced)
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
@@ -88,7 +88,7 @@ jobs:
   # en la proteccion de ramas de GitHub.
   final:
     name: ✅ Final check (Lint + Sonar)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [lint, sonar]
     # always(): corre aunque lint o sonar hayan fallado, para informar cual fue.
     if: ${{ always() }}
@@ -116,7 +116,7 @@ jobs:
 
   build:
     name: Build y push a GHCR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Solo despues de que lint y sonar pasaron.
     needs: [lint, sonar]
     # Solo en un push (no en PR) a preprod o prod.
@@ -135,19 +135,19 @@ jobs:
         run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/clerkiva-frontend" >> "$GITHUB_ENV"
 
       # Inicia sesion en GHCR con el token automatico del workflow (no hace falta crear uno).
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Buildx: el motor de build de Docker. Hace falta para la cache de abajo.
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # El equivalente a "docker build" + "docker push".
       # No se pasa VITE_SERVICE_URL: el Dockerfile usa /api por defecto, asi que la misma
       # imagen sirve para staging y produccion.
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           # Contexto = raiz del repo (lo que ven los COPY); usa el Dockerfile de la raiz.
           context: .
@@ -170,7 +170,7 @@ jobs:
 
   deploy:
     name: Deploy al VPS
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build]
     # GitHub Environment del que salen los secretos: preprod usa "staging", prod usa
     # "production". Asi cada rama solo puede leer los secretos de su ambiente.
