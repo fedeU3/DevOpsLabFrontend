@@ -36,12 +36,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Baja el codigo del repo en la maquina virtual.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Instala Node y cachea la carpeta de npm.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       # Instala exactamente lo que dice package-lock.json.
@@ -53,14 +53,14 @@ jobs:
     name: SonarCloud
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # Historial completo: Sonar lo usa para saber que codigo es nuevo.
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -126,7 +126,7 @@ jobs:
       # Permiso para subir imagenes al GitHub Container Registry con GITHUB_TOKEN.
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # GHCR exige el nombre en minusculas; el usuario de GitHub puede tener mayusculas.
       # ${VAR,,} es la forma de bash de pasar a minusculas. Lo guarda en IMAGE para los

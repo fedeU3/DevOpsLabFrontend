@@ -8,7 +8,7 @@ export const useMembers = ()=>{
     data: response,
     isLoading,
     error,
-  } = useQuery<AxiosResponse<Array<any>, AxiosError>>({
+  } = useQuery<AxiosResponse<Array<unknown>, AxiosError>>({
     queryKey: ['members'],
     queryFn: httpGETMembers,
   })

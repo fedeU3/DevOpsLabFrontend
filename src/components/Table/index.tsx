@@ -13,7 +13,7 @@ import React from 'react';
 
 interface TableProps {
   headers?: { value: string; label: string }[];
-  rows: { [key: string]: any }[];
+  rows: Record<string, React.ReactNode>[];
   loading?: boolean;
   show?: string[];
 }
@@ -23,7 +23,7 @@ interface TableHeadProps {
 }
 
 interface TableRowProps {
-  row: { [key: string]: any };
+  row: Record<string, React.ReactNode>;
   headers: { value: string; label: string }[];
 }
 
