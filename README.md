@@ -165,6 +165,41 @@ Para que producción requiera aprobación manual, activar *Required reviewers* e
 
 Para GHCR no hace falta crear nada: se usa el `GITHUB_TOKEN` automático del workflow.
 
+### Claves SSH
+
+La regla es **una clave por máquina que entra al VPS**. Cada clave privada se queda en la máquina donde se generó y nunca se copia a otra. Al VPS solo se le cargan las públicas (`.pub`).
+
+**Clave para GitHub Actions** (se genera una sola vez):
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/devopslab_deploy -C "github-actions-deploy" -N ""
+```
+
+- `~/.ssh/devopslab_deploy.pub` (pública): se carga en el VPS, en `~/.ssh/authorized_keys` del usuario del deploy.
+- `~/.ssh/devopslab_deploy` (privada): se pega completa en el secreto `VPS_SSH_KEY`. Después se puede borrar de la máquina local.
+
+**Clave personal** (una por cada computadora desde la que se entra a mano):
+
+```bash
+ssh-keygen -t ed25519 -C "<tu-nombre>@<nombre-de-la-maquina>"
+```
+
+Se guarda en `~/.ssh/id_ed25519`. Si esa máquina ya tiene una, se reutiliza. Para agregarla a un VPS que ya existe:
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519.pub <usuario>@<ip-del-vps>
+```
+
+Para quitarle el acceso a una máquina, se borra su línea de `~/.ssh/authorized_keys` en el VPS.
+
+**`VPS_KNOWN_HOSTS`** (la huella del VPS, para que el deploy no se conecte a un servidor falso):
+
+```bash
+ssh-keyscan <ip-del-vps>
+```
+
+Se pega la salida completa en el secreto.
+
 ## Tests e2e
 
 Hay una configuración inicial de Cypress en [cypress/](cypress/) (`cypress.config.ts` apunta a `http://localhost:3001`). Cypress no está en las dependencias del proyecto ni corre en el CI.
